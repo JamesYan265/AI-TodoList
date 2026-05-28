@@ -1,0 +1,22 @@
+{
+  "name": "ai-todo-list",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --env-file=.env server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.65",
+    "@ai-sdk/vue": "^3.0.191",
+    "ai": "^6.0.191",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "vue": "^3.5.34"
+  }
+}

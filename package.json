@@ -1,0 +1,13 @@
+{
+  "name": "ai-todo-list-root",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm start --workspace=backend",
+    "dev": "npm run dev:backend & npm run dev:frontend"
+  }
+}
