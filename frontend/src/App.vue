@@ -9,7 +9,7 @@ const input = ref('');
 // 2. 初始化 Chat 實例
 const chat = new Chat({
   transport: new TextStreamChatTransport({
-    api: '/api/chat'
+    api: 'https://ai-todolist.onrender.com/api/chat'
   })
 });
 
