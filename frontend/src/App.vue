@@ -3,13 +3,16 @@ import { computed, ref, onMounted, watch } from "vue";
 import { TextStreamChatTransport } from "ai";
 import { Chat } from "@ai-sdk/vue";
 
+//env
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
 // 1. 本地管理輸入框的狀態
 const input = ref("");
 
 // 2. 初始化 Chat 實例
 const chat = new Chat({
    transport: new TextStreamChatTransport({
-      api: "https://ai-todolist.onrender.com/api/chat",
+      api: `${BACKEND_URL}/api/chat`,
    }),
 });
 
@@ -45,9 +48,15 @@ const getMessageText = (m) => {
 // --- Todo Logic ---
 const todos = ref([]);
 
-onMounted(() => {
-   const saved = localStorage.getItem("ai-todos");
-   if (saved) todos.value = JSON.parse(saved);
+onMounted(async() => {
+   try {
+      const res = await fetch(`${BACKEND_URL}/api/todos`);
+      const data = await res.json();
+      todos.value = data;
+
+   } catch (error) {
+      console.error("get failed: ", error)
+   }
 });
 
 watch(
@@ -58,19 +67,67 @@ watch(
    { deep: true },
 );
 
-const addTodosFromMessage = (text) => {
+const addTodosFromMessage = async(text) => {
    const items = text
       .split("\n")
       .map((line) => line.replace(/^[-*]\s*/, "").trim())
       .filter(Boolean);
 
-   items.forEach((item, index) => {
-      todos.value.push({ id: Date.now() + index, text: item, done: false });
-   });
+
+   for(const item of items) {
+      try {
+         const res = await fetch(`${BACKEND_URL}/api/todos`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({text: item, done: false})
+         });
+
+         if(res.ok) {
+            const newTodo = await res.json();
+            todos.value.push(newTodo);
+         }         
+      } catch (error) {
+         console.error("can't add in database", error);
+      }
+   }
+   // items.forEach((item, index) => {
+   //    todos.value.push({ id: Date.now() + index, text: item, done: false });
+   // });
 };
 
-const removeTodo = (id) => {
-   todos.value = todos.value.filter((t) => t.id !== id);
+const removeTodo = async (id) => {
+   try {
+      await fetch(`${BACKEND_URL}/api/todos/${id}`, {
+         method: "DELETE"
+      })
+      todos.value = todos.value.filter((t) => t.id !== id);
+   } catch(error) {
+      console.error("Delete Unsuccessful", error)
+   }
+   // todos.value = todos.value.filter((t) => t.id !== id);
+};
+
+// 4. [更新] 同步任務狀態到 Firebase
+const toggleTodo = async (todo) => {
+  try {
+    // 發送 PUT 請求去更新狀態
+    // 注意：因為 v-model 已經行先一步幫你轉咗 todo.done 嘅值，
+    // 所以呢度直接傳送最新嘅 todo.done 過去就啱㗎啦。
+    const res = await fetch(`${BACKEND_URL}/api/todos/${todo.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done: todo.done })
+    });
+
+    if (!res.ok) {
+      throw new Error('Server response not OK');
+    }
+  } catch (error) {
+    console.error('更新狀態失敗:', error);
+    // 💡 貼心 UX 設計：如果 API 炒咗車，將畫面上嘅 Checkbox 啪返轉頭
+    todo.done = !todo.done;
+    alert("網絡連線有問題，更新失敗！");
+  }
 };
 
 // 5. 自訂重新生成 (Regenerate) 邏輯
@@ -152,7 +209,7 @@ const regenerate = () => {
                :class="{ done: todo.done }"
             >
                <label>
-                  <input type="checkbox" v-model="todo.done" />
+                  <input type="checkbox" v-model="todo.done" @change="toggleTodo(todo)"/>
                   <span>{{ todo.text }}</span>
                </label>
                <button @click="removeTodo(todo.id)" class="del-btn">❌</button>
@@ -299,7 +356,7 @@ $radius: 12px;
             .del-btn {
                background: none;
                border: none;
-               cursor: pointer;
+               cursor: point er;
                opacity: 0.5;
                &:hover {
                   opacity: 1;

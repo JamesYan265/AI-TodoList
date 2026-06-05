@@ -1,0 +1,36 @@
+POST http://localhost:3001/api/chat
+Content-Type: application/json
+
+{
+    "messages": [
+        {
+            "role" : "user",
+            "content" : "這是測試文本"
+        }
+    ]
+}
+###
+
+GET http://localhost:3001/api/todos
+
+###
+POST http://localhost:3001/api/todos
+Content-Type: application/json
+
+{
+    "text": "測試文本II",
+    "done": false
+}
+
+###
+### 測試更新任務 (PUT)
+PUT http://localhost:3001/api/todos/LT1eo7Qbf8qkgEYpPfit
+Content-Type: application/json
+
+{
+    "done": true
+}
+
+
+###
+DELETE http://localhost:3001/api/todos/hzJx6BYMuzM5NvX2blnL

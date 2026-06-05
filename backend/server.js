@@ -3,11 +3,24 @@ import express from "express";
 import cors from "cors";
 import { createOpenAI } from "@ai-sdk/openai";
 import { convertToModelMessages, generateText } from "ai";
+import admin from "firebase-admin";
+import fs from "fs";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
+//Firebase init
+
+const serverAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || fs.readFileSync("./serviceAccountKey.json", "utf-8"));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serverAccount)
+});
+
+const db = admin.firestore();
+
+//openRouter
 const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
 if (!openRouterApiKey) {
@@ -57,6 +70,69 @@ app.post("/api/chat", async (req, res) => {
   } catch (error) {
     console.error("AI response failed:", error);
     res.status(500).send("AI response failed. Please check your OpenRouter key, model, or rate limit.");
+  }
+});
+
+//rest API
+//get
+app.get("/api/todos", async(req, res) => {
+  try {
+    const snapshot = await db.collection("todos").orderBy("createdAt", "desc").get();
+    const todos = [];
+    snapshot.forEach((doc) => {
+      todos.push({id: doc.id, ...doc.data()});
+    });
+    res.json(todos);
+  } catch (error) {
+    res.status(500).json({error: "Failed to fetch todos"});
+  }
+});
+//post
+app.post("/api/todos", async(req, res) => {
+  try {
+    const {text, done} = req.body;
+    const newTodo = {
+      text,
+      done: done || false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const docRef = await db.collection("todos").add(newTodo);
+    // 我哋將 createdAt 換成一個標準嘅 ISO 時間字串
+    res.status(201).json({
+      id: docRef.id,
+      text: newTodo.text,
+      done: newTodo.done,
+      createdAt: new Date().toISOString() 
+    });
+  } catch (error) {
+    res.status(500).json({error: "Failed to add todo"});
+  }
+});
+
+//Delete
+app.delete("/api/todos/:id", async(req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection("todos").doc(id).delete();
+    res.json({message: "Todo delete successfully"});
+  } catch (error) {
+    res.status(500).json({error: "Failed to delete todo"});
+  }
+});
+
+// [更新] 更新 Todo 嘅完成狀態
+app.put("/api/todos/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { done } = req.body;
+    
+    // 話畀 Firebase 聽，淨係更新 `done` 呢個欄位
+    await db.collection("todos").doc(id).update({ done });
+    
+    res.json({ message: "Todo updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update todo" });
   }
 });
 
